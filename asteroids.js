@@ -1,18 +1,34 @@
+/*
+
+CONSTANTS! USE THIS TO MODIFY THE GAME
+
+*/
+
 const FPS = 30; //Frames per Second 
+//Ship
 const SHIP_SIZE = 30 //Ship Size in Pixels
 const SHIP_THRUST = 5;
 const TURN_SPEED =  360; //Turn Speed in Degrees per Second
 const FRICTION = 0.8; //Between 0 and 1, Determines Friction
+//Asteroids
 const ROIDS_NUM = 10; //Starting number of asteroids
 const ROIDS_SIZE = 100; //Starting size of asteroids in pixels
 const ROIDS_SPEED = 50; //Max starting speed of asteriods in pixels per second
 const ROIDS_VERT = 10; //Average number of sides on each asteroid
 const ROIDS_JAG = 0.2; //Jagged edges of asteroids (0 = 1, 1 = Lots)
+//Stars
+const STAR_SIZE = 0.5; //Star size
+const STAR_AMOUNT = 1000; //How many stars on background
+const STAR_RADIUS = 2; //How big the stars are
 
+
+//Get canvas * context
 var canvas = document.getElementById("gameCanvas");
 var context = canvas.getContext("2d");
 
 setInterval(update, 1000 / FPS);
+
+
 
 //Ship Object
 var ship = {
@@ -60,6 +76,41 @@ function keyUp(event) {
     }
 }
 
+/*
+
+Stars
+
+*/
+var stars = [];
+
+createStars();
+
+function createStars() {
+    stars = [];
+    var x, y;
+    for(let i = 0; i < STAR_AMOUNT; i++) {
+        x = Math.floor(Math.random() * canvas.width);
+        y = Math.floor(Math.random() * canvas.height);
+        stars.push(newStar(x, y));
+    }
+}
+
+function newStar(x, y) {
+    var star = {
+        x: x,
+        y: y,
+        r: Math.random() * STAR_RADIUS / 2,
+        a: Math.random() * Math.PI,
+        o: Math.round(Math.random() * 10) / 10
+    };
+    return star;
+}
+
+/*
+
+Asteroids
+
+*/
 //Set up Asteroids
 var roids = [];
 createAsteroids();
@@ -135,7 +186,25 @@ function update() {
         ship.thrust.x -= FRICTION * ship.thrust.x / FPS;
         ship.thrust.y -= FRICTION * ship.thrust.y / FPS;
     }
-    
+
+    //Draw Stars
+    context.fillStyle = "white";
+    for (let i = 0; i < stars.length; i++) {
+        var x, y, r, a;
+        x = stars[i].x;
+        y = stars[i].y;
+        r = stars[i].r;
+        a = stars[i].a;
+        o = stars[i].o;
+        context.globalAlpha = o;
+        context.beginPath();
+        context.arc(x, y, r, 0, 2 * Math.PI, false);
+        context.fillStyle = 'white';
+        context.fill();
+    }
+    context.globalAlpha = 1;
+
+
     //Draw Ship
     context.strokeStyle = "white";
     context.lineWidth = SHIP_SIZE / 20;
@@ -154,13 +223,16 @@ function update() {
     );
     context.closePath();
     context.stroke();
+    context.fillStyle = "black";
+    context.fill();
+
 
     //Draw Asteroids
     context.strokeStyle = "slategrey";
     context.lineWidth = SHIP_SIZE / 20;
-    var x, y, r, a, vert, offset;
-    for (let i = 0; i < roids.length; i++) {
 
+    for (let i = 0; i < roids.length; i++) {
+        var x, y, r, a, vert, offset;
         //Get Properties
         x = roids[i].x;
         y = roids[i].y;
@@ -180,11 +252,13 @@ function update() {
         for (let k = 1; k < vert; k++) {
             context.lineTo(
                 x + r * offset[k] * Math.cos(a + k * Math.PI * 2 / vert),
-                y + r * offset[k] *Math.sin(a + k * Math.PI * 2 / vert)
+                y + r * offset[k] * Math.sin(a + k * Math.PI * 2 / vert)
             );
         }
         context.closePath();
         context.stroke();
+        context.fillStyle = "black";
+        context.fill();
 
         //Move Asteroid
         roids[i].x += roids[i].xv;
@@ -222,7 +296,4 @@ function update() {
         ship.y = 0 - ship.r;
     }
 
-    //Centre Dot
-    //context.fillStyle = "red";
-    //context.fillRect(ship.x - 1, ship.y - 1, 2, 2);
 }
