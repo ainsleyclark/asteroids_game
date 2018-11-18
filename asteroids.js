@@ -14,7 +14,7 @@ const SHIP_BLINK_DUR = 0.1; //Durations of ships blink during invisibility in se
 const TURN_SPEED =  360; //Turn Speed in Degrees per Second
 const FRICTION = 0.8; //Between 0 and 1, Determines Friction
 //Asteroids
-const ROIDS_NUM = 50; //Starting number of asteroids
+const ROIDS_NUM = 5; //Starting number of asteroids
 const ROIDS_SIZE = 100; //Starting size of asteroids in pixels
 const ROIDS_SPEED = 50; //Max starting speed of asteriods in pixels per second
 const ROIDS_VERT = 10; //Average number of sides on each asteroid
@@ -36,14 +36,19 @@ const GAME_LIVES = 3; //Starting number of lives
 //Text
 const TEXT_FADE_TIME = 2.5; //Text fade time in seconds
 const TEXT_SIZE = 60; //Text font height in pixels
+//Scoring
+const ROIDS_PTS_LGE = 30; //Points scored for large asteroid
+const ROIDS_PTS_MED = 50; //Points scored for medium asteroid
+const ROIDS_PTS_SML = 100; //Points scored for small asteroid
+const SAVE_KEY_SCORE = "highscore"; //Save key for local storage of high score
 
 //Get canvas * context
 var canvas = document.getElementById("gameCanvas");
 var context = canvas.getContext("2d");
 
 //Game Parameters
-var level, lives, roids, ship, text, textAlpha;
-newGame();
+var level, lives, roids, score, highScore, ship, text, textAlpha;
+newGame( );
 
 setInterval(update, 1000 / FPS);
 
@@ -51,7 +56,10 @@ setInterval(update, 1000 / FPS);
 document.addEventListener("keydown", keyDown);
 document.addEventListener("keyup", keyUp);
 
+
 function keyDown(event) {
+    var blueOutline = document.querySelector("#blue_outline");
+    var joystickArm = document.querySelector("#joystick");
 
     if (ship.dead) {
         return;
@@ -60,20 +68,32 @@ function keyDown(event) {
     switch(event.keyCode) {
         case 32: //Space Bar (Shoot Laser)
             shootLaser();
+            blueOutline.classList.remove("cls-27");
+            blueOutline.classList.add("cls-26");
             break;
-        case 37: //Left Arrow (Rotate Left)
+        case 37: //Left Arrow (Rotate Left) 
+            joystickArm.style.transformOrigin = "42% 91%";
+            joystickArm.style.transform = "rotate(-20deg)";
             ship.rot = TURN_SPEED / 180 * Math.PI / FPS;
             break;
         case 38: //Up Arrow (Thrust Forward)
+            joystickArm.style.transform = "rotateX(25deg)";
+            
             ship.thrusting = true;
             break;
         case 39: //Right Arrow (Rotate Right)
+
+            joystickArm.style.transformOrigin = "39% 91%";
+            joystickArm.style.transform = "rotate(20deg)";
+
             ship.rot = -TURN_SPEED / 180 * Math.PI / FPS;
             break;
     }
 }
 
 function keyUp(event) {
+    var blueOutline = document.querySelector("#blue_outline");
+    var joystickArm = document.querySelector("#joystick");
 
     if (ship.dead) {
         return;
@@ -82,14 +102,21 @@ function keyUp(event) {
     switch(event.keyCode) {
         case 32: //Space Bar (Allow Shootiing Again)
             ship.canShoot = true;
+            blueOutline.classList.remove("cls-26");
+            blueOutline.classList.add("cls-27");
             break;
         case 37: //Left Arrow (STOP Rotating Left)
+            joystickArm.style.transformOrigin = "100% 100%";
+            joystickArm.style.transform = "rotate(0deg)";
             ship.rot = 0;
             break;
         case 38: //Up Arrow (STOP Thrust Forward)
+            joystickArm.style.transform = "rotateX(0deg)";
             ship.thrusting = false;
             break;
         case 39: //Right Arrow (STOP Rotate Right)
+            joystickArm.style.transformOrigin = "100% 100%";
+            joystickArm.style.transform = "rotate(0deg)";
             ship.rot = 0;
             break;
     }
@@ -156,9 +183,19 @@ function destroyAsteroid(index) {
     if (r == Math.ceil(ROIDS_SIZE / 2)) {
         roids.push(newAsteroid(x, y, Math.ceil(ROIDS_SIZE / 4)));
         roids.push(newAsteroid(x, y, Math.ceil(ROIDS_SIZE / 4)));
+        score += ROIDS_PTS_LGE;
     } else if (r ==  Math.ceil(ROIDS_SIZE / 4)) {
         roids.push(newAsteroid(x, y, Math.ceil(ROIDS_SIZE / 8)));
         roids.push(newAsteroid(x, y, Math.ceil(ROIDS_SIZE / 8)));
+        score += ROIDS_PTS_MED;
+    } else {
+        score += ROIDS_PTS_SML;
+    }
+
+    //Check high score
+    if (score > highScore) {
+        highScore = score;
+        localStorage.setItem(SAVE_KEY_SCORE, highScore);
     }
 
     //Destroy asteroid
@@ -231,7 +268,16 @@ function newAsteroid(x, y, r) {
 function newGame() {
     level = 0;
     lives = GAME_LIVES;
+    score = 0;
     ship = newShip();
+
+    //Get high score from local storage
+    var scoreString = localStorage.getItem(SAVE_KEY_SCORE);
+    if (scoreString == null) {
+        highScore = 0;
+    } else {
+        highScore = parseInt(scoreString);
+    }
     newLevel();
 }
 
@@ -289,7 +335,7 @@ function update() {
 
     //Thrust Ship
     if (ship.thrusting && !ship.dead) {
-        console.log(!ship.dead);
+
         ship.thrust.x += SHIP_THRUST * Math.cos(ship.a) / FPS;
         ship.thrust.y -= SHIP_THRUST * Math.sin(ship.a) / FPS;
 
@@ -464,7 +510,7 @@ function update() {
         context.textAlign = "center";
         context.textBaseLine = "middle";
         context.fillStyle = "rgba(255, 255, 255," + textAlpha + ")";
-        context.font = "small-caps " + TEXT_SIZE + "px Arial sans-serif";
+        context.font = "small-caps " + TEXT_SIZE + "px Courier New";
         context.fillText(text, canvas.width / 2, canvas.height * 0.75);
         textAlpha -= (1.0 / TEXT_FADE_TIME / FPS);
     } else if (ship.dead) {
@@ -481,6 +527,26 @@ function update() {
         lifeColour = exploding && i == lives - 1 ? "red" : "white";
         drawShip(SHIP_SIZE + i * SHIP_SIZE * 1.2, SHIP_SIZE, 0.5 * Math.PI, lifeColour)
     }
+
+    /****************************************
+        
+    Draw Score
+
+    ****************************************/
+
+    //Draw Score on the right side of the screen
+    context.textAlign = "right";
+    context.textBaseLine = "middle";
+    context.fillStyle = "white";
+    context.font = TEXT_SIZE + "px Courier New";
+    context.fillText(score, canvas.width - SHIP_SIZE / 2, SHIP_SIZE * 2);
+
+    //Draw the high score on the middle of the screen
+    context.textAlign = "center";
+    context.textBaseLine = "middle";
+    context.fillStyle = "white";
+    context.font = (TEXT_SIZE * 0.5) + "px Courier New";
+    context.fillText("HIGH SCORE " + highScore, canvas.width / 2 - (SHIP_SIZE / 2), SHIP_SIZE * 2);
 
     /****************************************
         
